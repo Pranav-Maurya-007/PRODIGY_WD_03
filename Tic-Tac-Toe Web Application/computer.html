@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tic-Tac-Toe</title>
+    <link rel="stylesheet" href="./style.css" />
+    <style>
+      .board {
+        display: grid;
+        grid-template-columns: repeat(3, 100px);
+        grid-gap: 5px;
+      }
+      .box {
+        width: 100px;
+        height: 100px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2em;
+        border: 1px solid #000;
+      }
+      .hide {
+        display: none;
+      }
+      button {
+        margin: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div>
+      <button class="btn" onclick="startGame('X')">Play as X</button>
+      <button class="btn" onclick="startGame('O')">Play as O</button>
+    </div>
+    <div class="container">
+      <div class="board">
+        <div class="box"></div>
+        <div class="box"></div>
+        <div class="box"></div>
+        <div class="box"></div>
+        <div class="box"></div>
+        <div class="box"></div>
+        <div class="box"></div>
+        <div class="box"></div>
+        <div class="box"></div>
+      </div>
+    </div>
+    <div class="msg-container hide">
+      <p id="msg"></p>
+    </div>
+    <button class="btn"><a href="./player.html">Play with friend</a></button>
+    <button class="btn" id="new-btn">New Game</button>
+
+    <script>
+      let boxes = document.querySelectorAll(".box");
+      let newGameBtn = document.querySelector("#new-btn");
+      let msgContainer = document.querySelector(".msg-container");
+      let msg = document.querySelector("#msg");
+
+      let board;
+      let player;
+      let ai;
+      let turnO;
+      let aiWinCount = 0;
+
+      const winPattern = [
+        [0, 1, 2],
+        [0, 3, 6],
+        [0, 4, 8],
+        [1, 4, 7],
+        [2, 5, 8],
+        [2, 4, 6],
+        [3, 4, 5],
+        [6, 7, 8],
+      ];
+
+      const startGame = (chosenPlayer) => {
+        board = Array(9).fill(null);
+        player = chosenPlayer;
+        ai = player === "X" ? "O" : "X";
+        turnO = chosenPlayer === "O";
+        enableBoxes();
+        msgContainer.classList.add("hide");
+        if (turnO) {
+          aiMove();
+        }
+      };
+
+      const resetGame = () => {
+        startGame(player);
+      };
+
+      boxes.forEach((box, index) => {
+        box.addEventListener("click", () => {
+          if (!board[index] && !isGameOver()) {
+            box.innerText = player;
+            board[index] = player;
+            turnO = true;
+            box.disabled = true;
+            if (!isGameOver()) {
+              aiMove();
+            }
+          }
+        });
+      });
+
+      const disableBoxes = () => {
+        for (let box of boxes) {
+          box.disabled = true;
+        }
+      };
+
+      const enableBoxes = () => {
+        for (let i = 0; i < boxes.length; i++) {
+          boxes[i].disabled = false;
+          boxes[i].innerText = "";
+          board[i] = null;
+        }
+      };
+
+      const showWinner = (winner) => {
+        msg.innerText = "Congratulations, Winner is " + winner;
+        msgContainer.classList.remove("hide");
+        disableBoxes();
+      };
+
+      const showFinalMessage = (message) => {
+        msg.innerText = message;
+        msgContainer.classList.remove("hide");
+        disableBoxes();
+      };
+
+      const isGameOver = () => {
+        if (checkWin(board, player)) {
+          showWinner(player);
+          return true;
+        }
+        if (checkWin(board, ai)) {
+          aiWinCount++;
+          if (aiWinCount === 3) {
+            showFinalMessage(
+              "AI has won the game by winning 3 times in a row!"
+            );
+            return true;
+          }
+          showWinner(ai);
+          return true;
+        }
+        if (board.every((cell) => cell !== null)) {
+          showFinalMessage("It's a draw!");
+          return true;
+        }
+        return false;
+      };
+
+      const checkWin = (board, player) => {
+        for (let pattern of winPattern) {
+          let [a, b, c] = pattern;
+          if (
+            board[a] === player &&
+            board[b] === player &&
+            board[c] === player
+          ) {
+            return true;
+          }
+        }
+        return false;
+      };
+
+      const aiMove = () => {
+        const bestMove = minimax(board, ai).index;
+        board[bestMove] = ai;
+        boxes[bestMove].innerText = ai;
+        boxes[bestMove].disabled = true;
+        turnO = false;
+        if (!isGameOver()) {
+          checkWin(board, ai);
+        }
+      };
+
+      const minimax = (newBoard, currentPlayer) => {
+        const availSpots = getAvailableSpots(newBoard);
+
+        if (checkWin(newBoard, player)) {
+          return { score: -10 };
+        } else if (checkWin(newBoard, ai)) {
+          return { score: 10 };
+        } else if (availSpots.length === 0) {
+          return { score: 0 };
+        }
+
+        const moves = [];
+        for (let i = 0; i < availSpots.length; i++) {
+          const move = {};
+          move.index = availSpots[i];
+          newBoard[availSpots[i]] = currentPlayer;
+
+          if (currentPlayer === ai) {
+            const result = minimax(newBoard, player);
+            move.score = result.score;
+          } else {
+            const result = minimax(newBoard, ai);
+            move.score = result.score;
+          }
+
+          newBoard[availSpots[i]] = null;
+          moves.push(move);
+        }
+
+        let bestMove;
+        if (currentPlayer === ai) {
+          let bestScore = -10000;
+          for (let i = 0; i < moves.length; i++) {
+            if (moves[i].score > bestScore) {
+              bestScore = moves[i].score;
+              bestMove = i;
+            }
+          }
+        } else {
+          let bestScore = 10000;
+          for (let i = 0; i < moves.length; i++) {
+            if (moves[i].score < bestScore) {
+              bestScore = moves[i].score;
+              bestMove = i;
+            }
+          }
+        }
+
+        return moves[bestMove];
+      };
+
+      const getAvailableSpots = (board) => {
+        return board
+          .map((val, index) => (val === null ? index : null))
+          .filter((val) => val !== null);
+      };
+
+      newGameBtn.addEventListener("click", resetGame);
+    </script>
+  </body>
+</html>
